@@ -1,7 +1,7 @@
 /* 
 Covid Analysis Data Exploration project 
 Source: https://ourworldindata.org/coronavirus
-Last Updated: 2021-06-06 (June 6th, 2021)
+Last Updated data: 2021-06-06 (June 6th, 2021)
 --> Skills used: Aggregate Functions, General Exploration, Wildcards, Joins, 
 		 CTE's, Temp Tables, Views, Converting Data Types
 */
