@@ -1,0 +1,705 @@
+---
+title: "Bellabeat Case Study"
+author: Emiliano Alvarez
+date: 2021/07/16
+output: html_notebook
+---
+
+## Google Data Analytics Capstone Project
+
+
+![](C:/Users/Admin/Documents/Emi/Google Analytics Professional Certificate/8. Capstone/Track 1 - Guided/Case 2 - Bellabeat/bellabeat.png)  
+
+
+## Overview
+
+Bellabeat is a high-tech company that manufactures health-focused smart products for women. It was founded by Urška Sršen and Sando Mur.  
+Bellabeat is a successful small company, but they have the potential to become a larger player in the global smart device market.  
+Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart device fitness data could help unlock new growth opportunities for the company.  
+
+
+In order to help Bellabeat discovering business opporunities, [FitBit Fitness Tracker Data](https://www.kaggle.com/arashnic/fitbit/code) will be analyzed in order **to gain insights into how consumers are using their smart devices**.   
+The whole dataset was provided by thirty FitBit users who consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring.
+
+
+Having this into consideration, the overall **Analysis** will be lead by these questions:
+
+1. What are some trends in smart device usage?  
+2. How could these trends apply to Bellabeat customers?  
+3. How could these trends help influence Bellabeat marketing strategy? 
+
+
+### Project Structure: 
+1. [Phase 1: Defining the Business Problem and a Business Task](#phase1) 
+2. [Phase 2: Prepare the data](#phase2)
+3. [Phase 3: Process the data](#phase3)
+4. [Phase 4: Analyze and Visualize](#phase4)
+5. [Phase 5: Conclusions](#phase5)
+
+ 
+
+
+## Phase 1: Business Problem & Business Task {#phase1}
+
+
+### Business Problem:  
+
+- What is the problem you are trying to solve?
+  - Understand how non-Bellabeat devices are used. 
+- How can your insights drive business decisions? 
+  - Analyzing data device-usage, will give insights on how people are already using their devices and it could reveal growth opportunities
+  - Trends analysis can be implemented in a Marketing Strategy
+
+### Stakeholders:  
+* Urška Sršen: Bellabeat’s cofounder and Chief Creative Officer
+* Sando Mur: Mathematician and Bellabeat’s cofounder
+* Bellabeat marketing analytics team: A team of data analysts that helps guide Bellabeat’s marketing strategy.  
+
+
+### Business Task  
+Analyze smart device usage data in order to gain insight into how consumers use non-Bellabeat smart devices.   
+
+
+
+## Phase 2: Prepare the data {#phase2}  
+
+Understanding how data was generated and collected, and check the data credibility.
+
+
+### Dataset Information  
+
+- Source: Amazon Mechanical Turk (Third-party data source)
+- Time period: 03.12.2016-05.12.2016 (2 months)
+- Number of participants: 33
+- Number of files: 18 CSVs
+- Platform: FitBit (wearables to track your health)
+- Data content: physical activity, heart rate, sleep monitoring, steps.  
+- Author: [Mobius](https://www.kaggle.com/arashnic), Data Scientist 
+- Licensing: CC0: Public Domain License   
+
+
+
+### Dataset Credibility 
+
+Issues with bias or credibility in this data, according to ROCCC standards:
+
+- Reliability: 
+  - The sample size is low; sample size potential bias. 
+  - FitBit data lacks information about gender and age.
+- Original: data provenance is from Amazon, a third-party data source  
+- Comprehensive: the data from FitBit comes randomly from 33 people, while Bellabeat is focused on women.
+- Current: The data is from 5 years ago, so an update is preferred.  
+- Cited: Yes  
+
+
+
+## Phase 3: Process data {#phase3}  
+
+
+After checking the data integrity, the data will be processed with R and Excel.
+
+
+When processing the data, it is important trying to connect the data with the Business Objectives.  
+For this part it is important to have an understanding of the different **Bellabeat's Products**, in order to know which files to process and analyze for, and get the most accurate conclusions.
+
+The Bellabeat Products track data related to: activity, sleep, stress, menstrual cycle, and mindfulness habits.  
+While the FitBit datasets have information about: daily activity, steps, heart rate, sleep monitoring and weight. 
+
+Hence, this project will be focused on `two common fields`:
+
+a. Activity
+b. Sleep
+
+
+After identifying the common fields between Bellabeat and Fitbit, we will need to merge both data sets to find a correlation between variables. There may be a relationship between the Daily Activity per user and the sleep patterns.
+
+
+Due to the small sample size (33) and the absence of gender from the FitBit dataset, there may be a potential bias when trying to escalate the results to a larger population or to a female-only population, which is the target market from Bellabeat, so it is not advisable to base business decisions entirely on this analysis.   
+
+
+
+
+### 3.1 Setting up R environment 
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(skimr)
+library(lessR)
+library(RColorBrewer)
+library(corrplot)
+```
+
+
+
+### 3.2 Load and Inspect the Data 
+
+
+```{r}
+#Loading files
+activity <- read_csv("C:/Users/Admin/Desktop/R/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+sleep <- read_csv("C:/Users/Admin/Desktop/R/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+
+head(activity, 3)
+head(sleep, 3)
+```
+
+
+
+
+### 3.3 Data Cleaning and Transformation
+
+As we can see, *ActivityDate* and *SleepDay*, both are **Characters**, so we need to transform them into a usable Date format.  
+For this we can use the lubridate function **mdy()**, which transforms a character into a Standard 'Ymd' date format. 
+
+For *ActivityDate* we use mdy(), and for *SleepDay* we need to add a Date-time component to the function, because it has a Date-time format (m/d/Y h:m:s AM/PM), so we use mdy_hms().  
+
+
+```{r}
+#Change the Date format 
+activity$ActivityDate <- mdy(activity$ActivityDate)
+head(activity, 3)
+
+sleep$SleepDay <- mdy_hms(sleep$SleepDay)
+head(sleep, 3)
+```
+
+And now both of our columns have a Date usable format. The *SleepDay* column has a *POSIXct* format, which handles date-time information(*<dttm>*), and it is now compatible with Date.  
+But we are going to change it to a standard date format just to simplify further analysis.  
+
+```{r}
+#Changing from POSIXct to Date 
+sleep$SleepDay <- as.Date(sleep$SleepDay, format = "%Y-%m-%d")
+
+class(sleep$SleepDay)
+```
+
+After this, we can see, the *SleepDay* column has now a standard Date format.
+
+Now we can remove unnecessary columns from the data frames.  
+From ***activity***: TrackerDistance and LoggedActivitiesDistance; since these are contained in the TotalDistance column and add unnecessary data to the analysis.   
+
+The ***sleep*** data frame will remain as it is, and next we are going to rename the date columns. 
+
+
+
+```{r}
+#Removing unnecessary columns
+activity <- activity %>% 
+  select(-"TrackerDistance", -"LoggedActivitiesDistance")
+
+head(activity, 3)
+```
+
+
+```{r}
+#Renaming date columns to Date
+
+activity <- rename(activity, Date = ActivityDate)
+head(activity, 3)
+
+sleep <- rename(sleep, Date = SleepDay)
+head(sleep, 3)
+```
+
+### 3.4 Merging
+
+Before moving on to the merge and since our sample size is very limited, it is very important to check if we have the same number of participants in both data frames, or there's missing information in one of them.  
+
+Missing information means that the analysis will be less accurate than if we had a bigger sample, and it is more prone to bias.
+
+```{r}
+#Checking the number of Id's for both df's
+print(n_distinct(activity$Id))
+print(n_distinct(sleep$Id))
+```
+
+As we can see, not all participants recorded their sleep data.  
+
+To solve this, when merging the data frames, we are going to join them with an ***inner_join***, which automatically knows which fields to relate the tables with, and will only relate the rows that are present in both tables, so the Id's with no sleep data recorded will be excluded. This works the same as in SQL, and we can specify the fields to join.  
+
+
+```{r}
+#Joining data frames
+
+overalldf <- inner_join(activity, sleep)
+head(overalldf)
+```
+
+
+With this available data, we can add one last column to make more complete the analysis, and it is the *AwakeTime*.   To know how much time awake users are spending when they go to bed, to see if there's an insomnia pattern and how could that relate with their activity, or what is the Average time of users to fall asleep, or also to tell if users are spending too much time on their cellphones before sleeping.
+
+```{r}
+#Time Awake of the users
+
+overalldf <- overalldf %>% 
+  mutate(MinutesAwake = TotalTimeInBed - TotalMinutesAsleep)
+```
+
+
+### 3.5 Verification
+
+And lastly, to verify that our data is clean we are going to check for 3 things:
+
+a. That there is no NULL values in our new data frame.
+b. There must be only 24 Id's after the merge
+c. No Duplicate Values
+
+```{r}
+#Check if there's NULL values
+colSums(is.na(overalldf))
+
+
+#Check that there are 24 distinct Id's
+print(n_distinct(overalldf$Id))
+
+
+#Check for duplicates
+duplicated(overalldf) %>% table()
+
+```
+
+The first 2 points went right, but we do have 3 duplicates so we remove them.
+
+```{r}
+#Removing Duplicates 
+overalldf <- distinct(overalldf)
+```
+
+
+After this, we must have only 410 records.
+
+```{r}
+count(overalldf)
+```
+
+
+Now the data is correctly **clean** and ready to **analyze**.
+
+
+
+## Phase 4: Analyze {#phase4}
+
+We will begin the Analysis by skimming our new data frame. 
+
+```{r}
+# Skim the data
+skim(overalldf)
+```
+
+
+We can see that there is only one **date** variable type and all the others are **numeric**.  
+The beginning of the dates start at 2016-04-12, and finishes at 2016-05-12, which is exactly a month. Originally we had records for 2 months but the time got reduced because of the available sleep data we have. 
+
+Then we are going to ***aggregate*** the dataframe to obtain the **mean** values for each **Id**, and have a general overview of the users' patterns, and will create 2 new data frames based on this aggregated one, one for the _AvgActivity_, and the other for _AvgSleep_, this in order to graph them later.  
+It is also useful if we want to export this dataframe to analyze it quickly in Excel, and look for general patterns.
+
+
+
+```{r}
+#Aggregate of the overalldf 
+avg_overall <- aggregate.data.frame(overalldf, list(overalldf$Id), FUN = mean) %>% 
+  select(-"Group.1", -"Date") %>% mutate_if(is.numeric, ~round(., 1))
+head(avg_overall, 3)
+```
+                          
+
+Now, it is preferrable if we change into **hours** the columns from Sleep: _TotalMinutesAsleep_, _TotalTimeInBed_ and _MinutesAwake_.  
+
+```{r}
+#Changing Minutes into Hours 
+
+avg_overall <- avg_overall %>% 
+  mutate(AvgHrsAsleep = TotalMinutesAsleep/60) %>% 
+  mutate(AvgHrsInBed = TotalTimeInBed/60) %>% 
+  mutate(AvgHrsAwake = MinutesAwake/60)
+
+#Rounding them to 1 decimal place
+avg_overall$AvgHrsAsleep <- round(avg_overall$AvgHrsAsleep, digits=1)
+avg_overall$AvgHrsInBed <- round(avg_overall$AvgHrsInBed, digits=1)
+avg_overall$AvgHrsAwake <- round(avg_overall$AvgHrsAwake, digits=1)
+
+head(avg_overall, 3)
+```
+
+
+Then we create our new separated data frames to graph and perform calculations later.  
+
+```{r}
+#Creating new data frames to graph
+avg_sleep <- select(avg_overall, Id, TotalMinutesAsleep, TotalTimeInBed, MinutesAwake, AvgHrsAsleep, AvgHrsInBed, AvgHrsAwake)
+
+head(avg_sleep, 3)
+
+avg_activity <- select(avg_overall, -TotalMinutesAsleep, -TotalTimeInBed, -MinutesAwake, -AvgHrsAsleep, -AvgHrsInBed, -AvgHrsAwake)
+
+head(avg_activity, 3)
+```
+
+### **Visualizations** 
+
+In order to identify patterns or trends, we will explore different visualizations:
+
+* Average Sleep Hours by range Bar Chart
+* Activity Minutes by Categories Bar Chart
+* Distribution of Steps Pie Chart
+* Relationship between Total Steps and Average Sleep Hours Scatterplot
+* Correlations between Activity Intensity and Average Sleep Hours 
+
+We will analyze first at Single Variables, and then relationships between variables.
+
+ 
+#### **Average Hours of Sleep** 
+
+
+First we will explore the Average Hours of Sleeps by Ranges. 
+
+```{r}
+#1. Creating a *Vector* of Ranges for the Sleep Hours
+sleep_hrs <- cut(avg_sleep$AvgHrsAsleep, breaks = c(0,2,4,6,8,10,12))
+
+#2. Counting the Frequency of Ranges 
+sleep_freq <- table(sleep_hrs)
+
+#3. Graph a BarChart with that Vector with BarChart from library lessR
+BarChart(sleep_hrs, main = "Average Hours of Sleep by Ranges",
+         xlab= "Average Sleep Hours", ylab="Individuals", quiet = TRUE)
+
+sleep_freq
+```
+
+
+
+
+As we can see from the Frequency Ranges, 13 out of 24 people, are in the in 6-8 hours of sleep range, which means 54% from the Sample. So the majority of people are in the acceptable range.  
+According to the [Sleep Foundation](https://www.sleepfoundation.org/how-sleep-works/how-much-sleep-do-we-really-need#:~:text=National%20Sleep%20Foundation%20guidelines1,to%208%20hours%20per%20night.) (Suni et al. 2021), "an Adult needs an average of 7-9 hours of sleep, and an hour more or less than the general range may be acceptable based on a person’s circumstances."   
+While not sleeping leads to a general deterioration of health and illnesses, we can see that 6 people or 25% from the sample are not getting enough sleep which is concerning, but since this data is from only one day we cannot make a solid conjecture about the sleep patterns.  
+
+
+Recapping, one of the chosen parameters to evaluate was **Sleep** since Bellabeat also measures it.  
+The devices to track sleep are the _Leaf_ or the _Time_. Both [Leaf](https://support.bellabeat.com/hc/en-us/articles/115004149669-How-does-it-work-) tracker (Bracelet/Necklace), or the [Time](https://bellabeat.com/product/time/) watch, connect to the Bellabeat app to track activity, sleep, and stress. They work similar as the FitBit [Sleep Score](https://help.fitbit.com/articles/en_US/Help_article/2439.htm), with respect to sleep. 
+
+According to _Sleep Foundation_, you must make Sleep a priority, so Bellabeat can start by incorporating reminders of the Sleeping Hours, for example, setting a time to get up, and as night falls, when it is 10pm display a reminder that says for instance: "You are waking up in 9 hours", this to make people more aware of the time they have left to sleep.  
+Also providing a weekly/monthly feedback that highlights the amount of hours they have slept and how is this contributing to their health or if they are lacking sleep hours, which could be useful to create this healthy and mandatory habit.
+
+
+
+
+#### **Activity Minutes** 
+
+
+The other common parameter is people's __Activity__, therefore, the Activity Minutes they had will be analyzed.
+
+The fields to analyze will be: VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes and SedentaryMinutes.  
+This will show us how the intensity of activity is distributed among users. 
+
+First we have to get the mean for each of the four variables, to get a Total Average for each, and with the Total Averages, we create a data frame to plot. This data frame will contain 2 fields: activity and minutes.  
+
+
+```{r}
+#1. Getting the Total Averages
+totavg_vam <- mean(avg_activity$VeryActiveMinutes)
+totavg_fam <- mean(avg_activity$FairlyActiveMinutes)
+totavg_lam <- mean(avg_activity$LightlyActiveMinutes)
+totavg_sm  <- mean(avg_activity$SedentaryMinutes)
+
+total_act  <- totavg_vam+totavg_fam+totavg_lam+totavg_sm #=1024
+
+#2. Creating a Data frame with the averages 
+totavg_df <- data.frame(activity= c("Very Active", "Fairly Active", "Lightly Active", "Sedentary"),
+                        minutes= c(totavg_vam, totavg_fam, totavg_lam,totavg_sm))
+
+#3. Transforming df, rounding minutes to integers
+totavg_df$minutes <- round(totavg_df$minutes, digits=0)
+
+#4. Inspecting df 
+head(totavg_df)
+
+#5. Plotting 
+ggplot(totavg_df) + geom_bar(aes(x=reorder(activity, minutes), y=minutes, fill=activity), stat = 'identity') +
+  coord_flip() + 
+  labs(title= 'Minutes by Activity Intensity', x= 'Activity', y= 'Minutes') + 
+  geom_text(aes(x=reorder(activity, minutes), y=minutes, label= minutes, hjust=-0.1)) +
+  ylim(0,810) + 
+  theme(legend.position = "none") 
+
+```
+
+
+
+The bar graph shows that people spent most of their time in a Sedentary state, in average 779 minutes, which is the equivalent of 13 hours. [Medical News Today](https://www.medicalnewstoday.com/articles/322910), state that "leading a sedentary lifestyle is becoming a significant public health issue. Sedentary lifestyles appear to be increasingly widespread in many nations, and it is linked to a range of chronic health conditions." (Falck, M.D., et al, 2018).
+
+Regardless of the reasons for a Sedentary lifestyle, according to the [Centers for Disease and Control and Preventions(CDC)](https://www.cdc.gov/physicalactivity/basics/adults/index.htm), "adults should do 150 minutes each week". That could be 30 minutes a day, 5 days a week, or 22 minutes each day.  
+
+
+As stated before, incorporating reminders or alarms in the devices would be a practical method to reduce the sitting time, for instance when the device measures that we have been for too long in a sedentary state, send an alarm. This alarm/reminder could be activated when the device detects that we haven't done physical activity.    
+The goal of this is targeting reductions in sedentary behavior or Sitting Time to increase physical activity and improve health.
+
+![CDC Activity Recommendations](C:/Users/Admin/Documents/Emi/Google Analytics Professional Certificate/8. Capstone/Track 1 - Guided/Case 2 - Bellabeat/physical_activity.png)  
+
+
+#### **Steps** 
+
+And finally, we will explore the Total Steps.
+
+The Variable of *TotalSteps* was chosen over *TotalDistance*, because it is more of a Standard Measurement for every person according to their body, rather than a specific distance. A distance of 8km represents more steps for someone short, or less steps for someone taller.  
+[Centers for Disease Control and Prevention (CDC)](https://www.cdc.gov/diabetes/prevention/pdf/postcurriculum_session8.pdf) reports that, "for general fitness, most adults should aim for 10,000 steps per day". This is the equivalent to 7.5-8 kms a day.
+
+Results from a study of the journal [Medicine and Science in Sports and Exercise](https://journals.lww.com/acsm-msse/Fulltext/2010/10000/Pedometer_Measured_Physical_Activity_and_Health.4.aspx) (Basset et al, 2010), found that "adults [in America] took an average of 5,117 steps per day".  
+
+
+For this, a Pie Chart will be plotted to show the distribution of Steps by the Number of individuals, in order to get a picture of how much people are walking. The categories will be set based on the **Average Steps** of the dataset.
+
+
+```{r}
+# IMPORTANT: When using the functions:
+# PieChart(input= Categorical Variable of a DF, or the function table(vec))
+# pie(input= numeric vector)
+
+# Average Steps value
+avg_steps <- mean(avg_activity$TotalSteps)
+
+
+# Categories based on the Average Steps 
+low <- nrow(subset(avg_activity, TotalSteps < 7500))
+medium <- nrow(subset(avg_activity, TotalSteps>7500 & TotalSteps < 10000))
+great<- nrow(subset(avg_activity, TotalSteps > 10000))
+
+# Putting together the Categories in a Numeric Vector
+steps_vec <- c(low,medium,great)
+legends_vec <- c("Low","Average","Great")
+
+# Adding a color palette
+colorp <- RColorBrewer::brewer.pal(length(steps_vec),"Set2")
+
+# Plotting with Pie 
+pie(steps_vec, clockwise = TRUE, labels = steps_vec, col=colorp,
+    main = 'Individuals by Number of Steps')
+
+legend("topright", legend = legends_vec, fill = colorp)
+```
+
+The Average Steps people walk every day are 7880, so based on that Average, it was decided to create three groups, rounding the average to 7500 steps a day, to lower the bar a little bit:
+
+a) Low: Less than 7,500 steps
+b) Average: Between 7,500 and 10,000 steps 
+c) Great: More than 10,000 steps
+
+From the Pie Chart we can see that the most common group is the one with less than 7500 steps, with 10 people, then the mid range between 7500 and 10,000 steps, with 9 people, and only 5 people out of 24 are walking more than 10 thousand steps a day. 
+
+
+
+
+
+#### **Total Steps vs Hours of Sleep** 
+
+
+Now we will explore how the variables relate to each other. 
+
+
+First, the relationship between Total Steps and Average Hours of Sleep. 
+
+
+```{r}
+#Counting the number of people that sleep between 6.5 to 8 hours 
+#As recommended by the WHO
+#Insight, Not part of the plot
+good_sleep <- nrow(subset(avg_sleep, AvgHrsAsleep>=6.5 & AvgHrsAsleep<=8))
+
+#Creating a data frame to obtain the Average steps of the people that are having a "Good Sleep"
+#Insight, Not part of the plot
+good_sleep_steps <- filter(avg_overall, AvgHrsAsleep>=6.5 & AvgHrsAsleep<=8) %>% 
+  select(TotalSteps, AvgHrsAsleep) %>% 
+  summarize(avg_steps_sleep = mean(TotalSteps)) %>% round(digits = 0)
+
+good_sleep_steps2 <- as.numeric(good_sleep_steps)
+
+#vector to custom the x-axis
+xaxis <- (c(1:11))
+
+#TotalDistance vs AvgHrsAsleep Scatterplot
+ggplot(avg_overall) + 
+  geom_point(mapping = aes(x= AvgHrsAsleep, y= TotalSteps, color= AvgHrsAsleep)) + 
+  labs(title = "Average Total Steps vs Hours of Sleep", 
+       x= 'Average Hours of Sleep', y='Total Steps') + 
+  geom_smooth(mapping = aes(x= AvgHrsAsleep, y= TotalSteps), formula = y ~ x, method = 'loess') +
+  scale_y_continuous(labels = comma) +
+  scale_x_continuous(labels = as.character(xaxis),breaks = xaxis) +
+  theme(legend.position = "none") +
+  geom_segment(x=6.5,y=15000, xend=8,yend=15000, color="purple") +
+  geom_segment(x=6.5,y=14500, xend=6.5,yend=15500, color="purple") +
+  geom_segment(x=8,y=14500, xend=8,yend=15500, color="purple") + 
+  geom_text(x=7.3,y=17000,label="'Good Sleep Range'", size=3.6)
+
+```
+
+As we saw earlier, only 5 people meet the goal of 10,000 steps or more a day, but an encouraging outlook is that 9 people are in the mid range, so we can focus on this group and encourage them to walk just a little bit more to reach the steps goal. And for the biggest group with less than the average, there should be alerts of positive reinforcement to encourage them to walk a little more to reach the average.   
+
+Dr. Hatano(1960) first found that walking 10,000 steps a day could improve the overall health, by strengthening you heart, and building stronger bones and muscles, among many other benefits. Since then, health organizations around the world have embraced that mark as a standard. 
+
+Interestingly, we can see that 4 out of the 5 people that walked more than 10,000 steps, sleeped less than 7 hours. And, 12 people are sleeping within the sleep range of 6.5-8 hrs.
+From these 12 people that are getting a good night sleep, they walk an average of 8013 steps, so we can see that those who sleep, from 6.5 to 8 hours, walk more than the average of 7,500 steps. 
+
+On the other hand, there's just one curious outlier, and it is the person with the most steps, almost 20 thousand, that person only slept 5 hours.  
+
+One way that Bellabeat can encourage commitment with their users' Health Challenges is by showing success stories, for instance, FitBit has a [Stories section](https://stories.fitbit.com/) in their site that has people's stories from different backgrounds and with different achieved objectives, they are short videos. People love stories and it is the most natural way of conveying information while creating an impact. One example is [Kawaiola's story](https://stories.fitbit.com/featured/kaiwiola/), an organ donor coordinator, with calls at all hours and no sleep, he needed to make sleep a priority. 
+
+
+
+
+#### **Activity Intensity vs Average Hours of Sleep Correlations** 
+
+
+Finally, we will explore a Correlation Matrix between the Average Hours of Sleep against the Activity Intensity variables. 
+
+We want to see if the more people sleep, the greater their Intensity of activity.
+
+```{r}
+# New DF: Activity Intensity vs Avg Hrs of Sleep
+act_sleep_df <- avg_overall %>% 
+  select(AvgHrsAsleep, SedentaryMinutes, LightlyActiveMinutes,
+         FairlyActiveMinutes, VeryActiveMinutes) %>% 
+  rename(AvgSleep=AvgHrsAsleep, 
+         Sedentary=SedentaryMinutes, 
+         Light=LightlyActiveMinutes,
+         Medium=FairlyActiveMinutes, 
+         Intense=VeryActiveMinutes)
+
+# Creating a Correlation Matrix of the DF
+corr_matrix <- cor(act_sleep_df)
+
+# Correlation Plot, corrplot(input=matrix)
+corrplot(corr_matrix, type = 'lower', order = "hclust",
+         method = 'color', addgrid.col = "grey", addCoef.col = 1, 
+         col=brewer.pal(n=8, name="RdYlBu"), 
+         tl.col = 'black', tl.cex = 0.9, tl.srt = 90,
+         title = "Correlation of Activity vs Average Hours of Sleep", mar=c(0,0,1,0))
+
+# Correlation Values
+cs_sm  <-cor(act_sleep_df$AvgSleep,act_sleep_df$Sedentary)
+cs_lam <-cor(act_sleep_df$AvgSleep,act_sleep_df$Light)
+cs_fam <-cor(act_sleep_df$AvgSleep,act_sleep_df$Medium)
+cs_vam <-cor(act_sleep_df$AvgSleep,act_sleep_df$Intense)
+
+# Correlation Vector
+cs_vec <- c(cs_sm,cs_lam,cs_fam,cs_vam) %>% round(digits=2)  
+
+# Correlation Sleep labels 
+cs_labs <- c("Sleep vs Sedentary","Sleep vs Light","Sleep vs Medium","Sleep vs Intense")
+
+# Correlation DF
+corr_df <- data.frame(SleepVsAct = cs_labs, 
+                      corr_coef = cs_vec)
+
+corr_df
+```
+
+
+[Dr. McLeod(2020)](https://www.simplypsychology.org/correlation.html) explains that __Correlation__ means _association_. A measure of how strong 2 variables are related. There are three possible results of a correlational study: a positive correlation, a negative correlation, and no correlation.  
+And the measure to determine the strength of the correlation is called, _Correlation Coefficient_, ranging from -1(Negative) to 1(Positive). The closer the coefficient is to 1 or -1, the stronger the correlation; the closer to 0 the lower the correlation. 
+
+In the Correlation Table we can see 2 things; first, aside from the Sedentary state, the other 3 Activity variables have a very low correlation against sleep, it is not statistically significant, so their correlation with sleep can be discharged. 
+
+On the other hand, it is very important to look at how strong the correlation is between Average Hours of Sleep vs Sedentary Activity, with -0.88, almost a perfect Negative Correlation.   
+A negative correlation means that as one variable goes up, the other goes down; so in this case, the data is implying that the less they are sleeping, the more sedentary they are, or viceversa. 
+
+Therefore we can conclude that people who get a 'good night sleep', are less sedentary; in other words, the better you sleep, the more active you are.  
+
+
+
+
+## 5. Conclusions {#phase5}
+
+
+### Findings
+After the analysis it was found that most of the FitBit users are not using the devices the whole time or in a consistent way, this can be seen in the lack of data and its inconsistencies, for instance, when loading the initial files, the _activity_ csv had 33 different IDs, while the _sleep_ csv had 24.  
+On the other hand, the next findings were discovered:  
+
+
+Sleep:
+
+- At least half the people are having a good night sleep, from 6.5 to 8 hours of sleep in average, according to the WHO.
+
+Physical Activity:  
+
+- People spent most of their time in a Sedentary state, in average 779 minutes, which is 76% of their Activity Time.  
+- Next to Sedentary, the 2nd most common activity type is Lightly Active.  
+- Only 209 minutes of Light Activity were registered. So only 20% of the necessary activity minutes are being covered (Recommended 150 minutes each week).
+- Most people spend most of the day seated while working (Sedentary), and may do some small chores there, or if doing home office, chores are  is because a lot of users may spend all day working seated.
+- And the reason for the Light activity 
+
+
+Steps:   
+
+- only 5 people out of 24 are walking more than 10,000 steps a day. And the Average steps that people walk are 7880 steps.  
+- 10 people walk less than the average, and 9 people are between the Average and the Goal of 10K steps.
+
+Total Steps vs Hours of Sleep:  
+
+- Interestingly, 4 out of the 5 people that walked more than 10,000 steps, sleeped less than 7 hours, so it had no much effect, that they slept less than the recommended hours. Hence, there could be reminders of complying the recommended steps even if they hadn't a good night sleep.   
+- 12 people (50%) are sleeping within the range of 6.5-8 hrs. These 12 people, walk an average of 8013 steps, more than the Average Steps but a little less than the goal. The Sleep Foundation states that 6.5 hours of sleep may still be acceptable.  
+- There is a curious outlier; the person with the most steps walked almost 20,000 steps. That person only slept 5 hours.  
+
+Average Hours of Sleep vs Activity Intensity:
+
+- There is a very low correlation between the Sleep and the Activity intensity(Light, Medium, Intense).  
+- With respect to Sedentary behavior, there's a correlation of -0.88 against the Sleep, almost a perfect Negative Correlation. A negative correlation means that as one variable goes up, the other goes down, therefore, we can say that people who get a 'good night sleep', are less sedentary; in other words, the better you sleep, the more active you are.
+
+
+
+### Recommendations
+
+- When acquiring a Bellabeat device, emphasize the use of the devices; the longer, the better, so they can have consistent data to track your health and make tailored recommendations or better analysis.  
+- Whenever a user is falling behind with their health objectives(sleep, physical activity, etc.), send continuous reminders on the app, not like the ones of Duolingo that get annoying after a while, but with positive reinforcement feedbacks on how meeting their goals, will benefit their health.  
+This could enhance the grit in users to comply with their objectives, rather than emphasizing how far behind we are from our goal, and discourage users.   
+- An effective way of creating engagement with users, is creating a _Stories Section_ in the platform like FitBit; showing stories/videos about success stories of people's health goals.  
+Stories are memorable in a way that stats aren't, these can create an impact in users aside from the app reports.  Stories are important because they are meaningful; this could encourage users to engage not only with their goals, but also with the products, and enhance the perceived value of the brand within users. 
+- Whenever the sleeping time gets closer, as the night falls by, send reminders (like _f.lux_ for PCs) that say "You are waking up in 9 hours" for instance, to make people more aware of the time hey have left to sleep, since it was a correlation that proved that people that sleep better, are more active. Sleep is a cornerstone of our health.
+
+
+### Limitations  
+* The main dataset utilized to perform the analysis (after processing several datasets and merging them), contained only data from 24 individuals, which makes it a very small sample size for any statistical significance.  
+
+* The dataset has no Gender; so there may be a potential bias when trying to escalate the results into a female-only population, which is the target market from Bellabeat.
+
+* The users only recorded one night of sleep, so definitely we can't make a Linear Regression to get predictions.  
+
+> It is not advisable to base business decisions entirely on this analysis.  
+
+
+### Further Analysis
+After finishing the project, these Kaggle datasets were found, they could have been useful to enrich the analysis, had they been discovered earlier: 
+
+- [More than 4 years of steps and sleep data. Mi band](https://www.kaggle.com/damirgadylyaev/more-than-4-years-of-steps-and-sleep-data-mi-band/code) by Damir Gadylyaev
+- [Sleep Data](https://www.kaggle.com/danagerous/sleep-data) by Dana Diotte
+
+
+
+
+
+### References 
+
+Google. (2021). Google Data Analytics Professional Certificate. Coursera. https://www.coursera.org/professional-certificates/google-data-analytics
+
+Codecademy Pro. (2021). Analyze Data with R. https://www.codecademy.com/learn/paths/analyze-data-with-r
+
+Sindhu, C. (2019, July 4th). Code snippet to find number of null values in each column in a dataframe in R. Edureka. https://www.edureka.co/community/50920/code-snippet-find-number-null-values-each-column-dataframe
+
+Beaupré, S. (2014, 23 December). Rounding selected columns of data.table in R. Stack Overflow. https://stackoverflow.com/questions/27613310/rounding-selected-columns-of-data-table-in-r
+
+Nolis, J. (2018, 9 January). How to convert a column in a data.frame from POSIXct to date in R. Stack Overflow. https://stackoverflow.com/questions/48177182/how-to-convert-a-column-in-a-data-frame-from-posixct-to-date-in-r
+
+Huizen, J., & Wilson, D. R. (Ph.D.) (2021, 26 February). How many steps should people take per day? Medical News Today. https://www.medicalnewstoday.com/articles/how-many-steps-should-you-take-a-day
+
+Suni, E., & Dr. Singh, A. (2021, 10 March). How Much Sleep Do We Really Need? Sleep Foundation. https://www.sleepfoundation.org/how-sleep-works/how-much-sleep-do-we-really-need#:%7E:text=National%20Sleep%20Foundation%20guidelines1,to%208%20hours%20per%20night.
+
+Gerbing, D. (2020). Bar Charts. cran.r-project. https://cran.r-project.org/web/packages/lessR/vignettes/BarChart.html
+
+Shork, J. (2020). Count Observations by Factor Level in R | Get Frequency of Categories. Statistics Globe. https://statisticsglobe.com/count-observations-by-factor-level-in-r
+
+CDC. (2020, 7 October). How much physical activity do adults need? Centers for Disease Control and Prevention. https://www.cdc.gov/physicalactivity/basics/adults/index.htm
+
+Kandola, A., M. D. (2018, 29 August). What are the consequences of a sedentary lifestyle? Medical News Today. https://www.medicalnewstoday.com/articles/322910
+
+BASSETT, WYATT, THOMPSON, PETERS, & HILL. (2010, October). Pedometer-Measured Physical Activity and Health Behaviors. . . : Medicine & Science in Sports & Exercise. Medicine & Science in Sports & Exercise. https://journals.lww.com/acsm-msse/Fulltext/2010/10000/Pedometer_Measured_Physical_Activity_and_Health.4.aspx
