@@ -1,0 +1,248 @@
+---
+title: "Aggregates in R"
+subtitle: "A/B Testing"
+output: html_notebook
+---
+
+
+### Loading libraries and data  
+
+```{r message = FALSE, error=TRUE}
+# loading packages
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r message = FALSE, error=TRUE}
+# loading "ad_clicks" data
+ad_clicks <- read_csv("ad_clicks.csv")
+```
+
+### Analyzing data  
+
+1.
+Inspect the first few rows of ad_clicks using head().
+
+```{r error=TRUE}
+# inspect ad_clicks here:
+head(ad_clicks)
+```
+
+`ad_clicks` contains the following columns:
+
+- user_id: unique user id
+- utm_source: where user saw the ad. UTM stands for Urchin Tracking Module
+- day: the day the ad was seen
+- ad_click_timestamp: the time the ad was clicked
+- ad_clicked: boolean indicating if ad was clicked (TRUE or FALSE)
+- experimental_group: which ad version was shown (A or B)
+
+2.
+Your manager wants to know which ad platform is getting the most views.
+
+How many views (i.e., rows of the data frame) came from each utm_source? 
+
+```{r error=TRUE}
+# define views_by_utm here:
+views_by_utm <- ad_clicks %>% 
+  group_by(utm_source) %>%
+  summarize(count = n()) %>%
+  arrange(-count)
+views_by_utm
+```
+`views_by_utm` has the following counts:
+
+email: 255 views
+facebook: 504 views
+google: 680 views
+twitter: 215 views
+
+3.
+We want to know the percentage of people who clicked on ads from each utm_source. Let’s start by finding the number of clicks per utm_source.
+
+```{r error=TRUE}
+# define clicks_by_utm here:
+clicks_by_utm <- ad_clicks %>% 
+  group_by(utm_source, ad_clicked) %>%
+  summarize(count = n()) %>%
+  arrange(utm_source)
+clicks_by_utm
+
+table(ad_clicks$ad_clicked)
+```
+`clicks_by_utm` showed the following counts for each utm_source/ad_clicked grouping:
+
+- email/FALSE (not clicked): 175
+- email/TRUE (clicked): 80
+- facebook/FALSE (not clicked): 324
+- facebook/TRUE (clicked): 180
+- google/FALSE (not clicked): 441
+- google/TRUE (clicked): 239
+- twitter/FALSE (not clicked): 149
+- twitter/TRUE (clicked): 66
+
+
+4.
+To find the percentage of people who clicked on ads from each utm_source, we need to add a new column to ad_clicks that stores the count of clicks (or the count of not clicking) divided by the total number of ad views.  
+
+5.
+Filter percentage_by_utm to remove all rows that do not describe clicked ads, and view it.
+
+```{r error=TRUE}
+# define percentage_by_utm here:
+percentage_by_utm <- clicks_by_utm %>%
+  group_by(utm_source) %>%
+  mutate(percentage = count/sum(count)) 
+percentage_by_utm
+
+percentage_by_utm$percentage <- round(percentage_by_utm$percentage, 
+  digits=3)
+percentage_by_utm
+
+# filtering percentage
+true_clicks <- percentage_by_utm %>%
+  filter(ad_clicked == TRUE) %>%
+  arrange(-percentage)
+true_clicks
+```
+
+- `count` represents the number of users who did or did not click on an ad
+- `sum(count)` represents the total number of users who saw the ad  
+
+`percentage_by_utm` will now contain the click and non-click rates for each utm_source/ad_clicked grouping.  
+
+In order of most effective `utm_source`:
+
+- facebook: 35.7% of viewers clicked the ad
+- google: 35.1% of viewers clicked the ad
+- email: 31.4% of viewers clicked the ad
+- twitter: 30.7% of viewers clicked the ad
+
+
+### Performing A/B Test
+
+6.
+The column experimental_group tells us whether the user was shown ad A or ad B.
+
+Were approximately the same number of people shown both ads? Group _ad_click_ by _experimental_group_ and count the rows, saving your result to _experiment_split_.
+
+```{r error=TRUE}
+# define experiment_split here:
+experiment_split <- ad_clicks %>%
+  group_by(experimental_group) %>%
+  summarize(count = n())
+experiment_split
+```
+
+We can see that there was an equal number of users (827) in each experiment group.
+
+
+
+7.
+Using group_by() and the columns ad_clicked and experimental_group, check to see if a greater number of users clicked on ad A or ad B. Save your result to `clicks_by_experiment`, and view it.
+
+```{r error=TRUE}
+# define clicks_by_experiment here:
+clicks_by_experiment <- ad_clicks %>%
+  group_by(experimental_group, ad_clicked) %>%
+  summarize(count = n()) %>% 
+  mutate(percentage = count/sum(count))
+
+clicks_by_experiment$percentage <- 
+  round(clicks_by_experiment$percentage, digits=3)
+clicks_by_experiment
+
+true_experiment_clicks <- ad_clicks %>%
+  group_by(experimental_group) %>%
+  filter(ad_clicked == TRUE) %>% 
+  summarize(count = n()) %>% 
+  mutate("TrueClicks%" = count/sum(count))
+true_experiment_clicks
+```
+A greater number of users clicked Ad A (310) than Ad B (255).
+
+
+
+8.
+The Product Manager for the A/B test thinks that the clicks might have changed by day of the week.
+
+Create two data frames: a_clicks and b_clicks, which contain only the results for A group and B group, respectively.
+```{r error=TRUE}
+# define a_clicks here:
+a_clicks <- ad_clicks %>% 
+  filter(experimental_group == "A")
+
+# define b_clicks here:
+b_clicks <- ad_clicks %>%
+  filter(experimental_group == "B")
+```
+
+
+9.
+For each data frame (*a_clicks* and *b_clicks*), we want to find the number of users who clicked on the ad (and did not click on the ad) by day. Save the results to _a_clicks_by_day_ and _b_clicks_by_day_, and view them.
+```{r error=TRUE}
+# define a_clicks_by_day here:
+a_clicks_by_day <- a_clicks %>%
+  group_by(day,ad_clicked) %>%
+  summarize(count=n())
+a_clicks_by_day
+
+# define b_clicks_by_day here:
+b_clicks_by_day <- b_clicks %>%
+  group_by(day,ad_clicked) %>%
+  summarize(count=n())
+b_clicks_by_day
+```
+
+10.
+To find the percentage of people who clicked on the ads from each _day_, we need to add a new column to _a_clicks_by_day_ and _b_clicks_by_day_ that stores the _count_ of clicks (or the _count_ of not clicking) divided by the total number of ad views.  
+
+11.
+Filter _a_percentage_by_day_ and _b_percentage_by_day_ to remove all rows that do not describe clicked ads, and view them.  
+
+```{r error=TRUE}
+# define a_percentage_by_day here:
+a_percentage_by_day <- a_clicks_by_day %>%
+  group_by(day) %>%
+  mutate(percentage = count/sum(count)) %>% 
+  filter(ad_clicked==TRUE) %>% 
+  mutate(group = "A")
+a_percentage_by_day
+
+# define b_percentage_by_day here:
+b_percentage_by_day <- b_clicks_by_day %>% 
+  group_by(day) %>%
+  mutate(percentage = count/sum(count)) %>%
+  filter(ad_clicked==TRUE) %>%
+  mutate(group = "B") 
+b_percentage_by_day
+```
+
+
+12. Joining data frames to plot
+```{r}
+# joining a & b dfs 
+dfs <- full_join(a_percentage_by_day,b_percentage_by_day) 
+dfs
+```
+
+
+13. Plotting 
+```{r}
+# plot with facet wrap by group 
+comparison1 <- ggplot(dfs, aes(day, percentage)) + 
+  geom_bar(stat='identity') +
+  labs(title = "Percentage of Clicks by Days", 
+  x= "Days", y='Percentage') + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  facet_wrap(~group) 
+
+comparison1
+```
+
+We can see that there's a difference in click rates for each day.   
+Ad `A` outperformed ad `B` on every day of the week except Tuesday and Sunday, so **A** is the better choice.
+
+
+ 
